@@ -5,7 +5,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.slf4j.LoggerFactory
 
 import collection.JavaConverters._
-import edu.larsjaas.rest.{CrudServiceFactoryActor, WebService}
+import edu.larsjaas.rest.{CrudServiceFactoryActor, HttpService, WebService}
 
 class Context() {
   val log = LoggerFactory.getLogger("Context")
@@ -20,10 +20,10 @@ class Context() {
     system = Some(ActorSystem("ember-test", config))
     var crudhub = system.get.actorOf(CrudServiceFactoryActor.props(cruds))
 
-    log.info("cruds: " + cruds)
-    log.info("contains 'device'? " + cruds.contains("device"))
+    log.debug("cruds: " + cruds)
 
-    val webactor = system.get.actorOf(WebService.props(crudhub, cruds), WebService.NAME)
+    val httpactor = system.get.actorOf(HttpService.props(), HttpService.NAME)
+    val webactor = system.get.actorOf(WebService.props(crudhub, cruds, httpactor), WebService.NAME)
   }
 
   def stop(): Unit = {

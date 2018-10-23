@@ -16,7 +16,7 @@ import akka.pattern.ask
 
 import scala.language.postfixOps
 
-class WebService(crudFactory: ActorRef, crudServices: Seq[String]) extends Actor {
+class WebService(crudFactory: ActorRef, crudServices: Seq[String], httpService: ActorRef) extends Actor {
   val log = WebService.log
 
   implicit val system: ActorSystem = context.system
@@ -31,42 +31,42 @@ class WebService(crudFactory: ActorRef, crudServices: Seq[String]) extends Actor
     super.preStart()
 
     val route = Route {
-     extractRequestContext { context =>
-       log.info(s"path: ${context.request.uri.path.toString()}")
-       path("hello") {
-         get {
-           complete("Hello World!")
-         }
-       } ~
-       extractRequest { request =>
-         val prefix = request.uri.path.toString.split("/")(1)
-         if (crudServices.contains(prefix)) {
-           toStrictEntity(20 seconds, 10480L) {
-             onSuccess((crudFactory ? request) (20 seconds, self)) {
-               case result@HttpResponse(_, _, _, _) =>
-                 complete(result)
-               case x =>
-                 log.warn(s"crud factory responded with ${x.getClass.getSimpleName}: $x")
-                 complete(HttpResponse(status = StatusCodes.InternalServerError))
-             }
-           }
-         }
-         else {
-           complete(HttpResponse(status = StatusCodes.InternalServerError))
-         }
-       }
-     }
-   }
+      extractRequestContext { context =>
+        log.debug(s"path: ${context.request.uri.path.toString()}")
+        extractRequest { request =>
+          val segments = request.uri.path.toString.split("/")
+          if (segments.length > 1 && crudServices.contains(segments(1))) {
+            toStrictEntity(20 seconds, 10480L) {
+              onSuccess((crudFactory ? request) (20 seconds, self)) {
+                case result@HttpResponse(_, _, _, _) =>
+                  complete(result)
+                case x =>
+                  log.warn(s"crud factory responded with ${x.getClass.getSimpleName}: $x")
+                  complete(HttpResponse(status = StatusCodes.InternalServerError))
+              }
+            }
+          }
+          else {
+            onSuccess((httpService ? request) (20 seconds, self)) {
+              case result@HttpResponse(_, _, _, _) =>
+                complete(result)
+              case x =>
+                log.warn(s"unknown HttpService response ${x.getClass.getSimpleName} - $x")
+                complete(HttpResponse(status = StatusCodes.InternalServerError))
+            }
+          }
+        }
+      }
+    }
 
     val routeFlow = RouteResult.route2HandlerFlow(route)
     val bindingFuture = Http().bindAndHandle(routeFlow, "0.0.0.0", 8080)
 
     bindingFuture.onComplete {
-      case Success(serverBinding) => println(s"listening to ${serverBinding.localAddress}")
-      case Failure(error) => println(s"error: ${error.getMessage}")
+      case Success(serverBinding) => log.info(s"listening to ${serverBinding.localAddress}")
+      case Failure(error) => log.error(error.getMessage)
     }
   }
-
 
   override def postStop(): Unit = {
     super.postStop()
@@ -83,7 +83,7 @@ object WebService {
   val NAME = "WebService"
   val log = LoggerFactory.getLogger(NAME)
 
-  def props(crud: ActorRef, crudServices: Seq[String]): Props = {
-    Props.create(classOf[WebService], crud, crudServices)
+  def props(crud: ActorRef, crudServices: Seq[String], httpService: ActorRef): Props = {
+    Props.create(classOf[WebService], crud, crudServices, httpService)
   }
 }

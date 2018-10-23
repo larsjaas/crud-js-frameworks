@@ -24,7 +24,7 @@ class CrudServiceFactoryActor(categories: Seq[String]) extends Actor {
   val ADD_WITH_NEW_STRING = true
 
   override def preStart(): Unit = {
-    log.info(s"crud-factory born")
+    log.info(s"born")
     crudservices = Some(categories.map(c =>
       c -> context.system.actorOf(CrudServiceActor.props(c), c)
     ).toMap)
@@ -33,7 +33,7 @@ class CrudServiceFactoryActor(categories: Seq[String]) extends Actor {
 
   override def postStop(): Unit = {
     super.postStop()
-    log.info(s"crud-factory died")
+    log.info(s"died")
   }
 
   def receive = {
