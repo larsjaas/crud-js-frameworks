@@ -1,0 +1,35 @@
+<configuration  scan="true" scanPeriod="5 minutes">
+    <property name="profile" value="${environment}"/>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} %-5level %logger{36} - %msg %n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- disabled since logback creates stub files, even when unused
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>../logs/${environment}/crud-js-frameworks.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>../logs/${environment}/crud-js-frameworks.%d.log</fileNamePattern>
+            <maxHistory>100</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d %-5level %logger{36} - %msg %n</pattern>
+        </encoder>
+    </appender>
+    -->
+
+    <logger name="akka.io" level="WARN"/>
+    <logger name="akka.event" level="WARN"/>
+    <logger name="ch.qos.logback" level="WARN"/>
+
+    <if condition='"dev".equals(property("profile"))'>
+        <then>
+            <root level="DEBUG">
+                <appender-ref ref="STDOUT"/>
+                <!-- <appender-ref ref="FILE"/> -->
+            </root>
+        </then>
+    </if>
+</configuration>
